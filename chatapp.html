@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ZapChat</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #0a0d12;
+  --surface:   #111620;
+  --surface2:  #181f2e;
+  --border:    rgba(255,255,255,0.07);
+  --accent:    #25d366;
+  --accent2:   #1aab52;
+  --me:        #1f3a2a;
+  --me-text:   #d5f7e1;
+  --other:     #1a2030;
+  --other-text:#e8eaf0;
+  --muted:     #6b7a96;
+  --danger:    #ff4444;
+  --online:    #25d366;
+  --font:      'Plus Jakarta Sans', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);font-family:var(--font);color:#e8eaf0;height:100dvh;overflow:hidden;display:flex;}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:340px;min-width:340px;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100dvh;
+}
+@media(max-width:700px){
+  #sidebar{width:100%;min-width:unset;display:none;}
+  #sidebar.show{display:flex;}
+  #chatarea{display:none;}
+  #chatarea.show{display:flex;}
+}
+
+/* Sidebar Header */
+#sb-header{
+  padding:16px 18px 12px;
+  background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+#my-avatar{
+  width:42px;height:42px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),#0d8a3e);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;
+  cursor:pointer;flex-shrink:0;
+  box-shadow:0 0 0 2px var(--accent);
+}
+#sb-title{font-size:20px;font-weight:700;flex:1;letter-spacing:-0.3px;}
+.icon-btn{
+  width:38px;height:38px;border-radius:50%;border:none;
+  background:transparent;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all 0.15s;font-size:18px;
+}
+.icon-btn:hover{background:rgba(255,255,255,0.07);color:#fff;}
+
+/* Search */
+#search-wrap{padding:10px 14px;background:var(--surface);}
+#search-input{
+  width:100%;padding:10px 14px;
+  background:var(--surface2);
+  border:1px solid var(--border);border-radius:12px;
+  color:#e8eaf0;font-size:14px;font-family:var(--font);
+  outline:none;transition:border-color 0.2s;
+}
+#search-input::placeholder{color:var(--muted);}
+#search-input:focus{border-color:rgba(37,211,102,0.4);}
+
+/* Chat list */
+#chat-list{flex:1;overflow-y:auto;}
+#chat-list::-webkit-scrollbar{width:4px;}
+#chat-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+
+.chat-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 18px;cursor:pointer;
+  border-bottom:1px solid var(--border);
+  transition:background 0.15s;position:relative;
+}
+.chat-item:hover,.chat-item.active{background:var(--surface2);}
+.chat-item.active{border-left:3px solid var(--accent);}
+
+.ci-avatar{
+  width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:700;flex-shrink:0;
+  position:relative;
+}
+.ci-avatar .online-dot{
+  position:absolute;bottom:1px;right:1px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--online);border:2px solid var(--surface);
+}
+.ci-info{flex:1;min-width:0;}
+.ci-name{font-size:15px;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-last{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.ci-time{font-size:11px;color:var(--muted);}
+.ci-badge{
+  background:var(--accent);color:#fff;
+  font-size:11px;font-weight:700;
+  width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ── CHAT AREA ── */
+#chatarea{
+  flex:1;display:flex;flex-direction:column;
+  height:100dvh;background:var(--bg);position:relative;
+}
+
+/* Chat background pattern */
+#chatarea::before{
+  content:'';position:absolute;inset:0;
+  background-image:radial-gradient(circle, rgba(37,211,102,0.03) 1px, transparent 1px);
+  background-size:28px 28px;pointer-events:none;z-index:0;
+}
+
+/* Chat header */
+#chat-header{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 18px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  z-index:1;position:relative;
+}
+#back-btn{
+  display:none;
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:transparent;color:#e8eaf0;
+  align-items:center;justify-content:center;
+  cursor:pointer;font-size:20px;
+}
+@media(max-width:700px){#back-btn{display:flex;}}
+#ch-avatar{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;flex-shrink:0;
+}
+#ch-info{flex:1;}
+#ch-name{font-size:16px;font-weight:700;}
+#ch-status{font-size:12px;color:var(--accent);margin-top:1px;}
+.ch-action{font-size:20px;}
+
+/* Messages area */
+#messages{
+  flex:1;overflow-y:auto;padding:16px 18px;
+  display:flex;flex-direction:column;gap:4px;
+  z-index:1;position:relative;
+}
+#messages::-webkit-scrollbar{width:4px;}
+#messages::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px;}
+
+/* Date separator */
+.date-sep{
+  text-align:center;margin:10px 0;
+}
+.date-sep span{
+  background:rgba(255,255,255,0.06);
+  color:var(--muted);font-size:11px;
+  padding:4px 12px;border-radius:10px;
+}
+
+/* Message bubble */
+.msg{
+  display:flex;flex-direction:column;
+  max-width:72%;animation:msgIn 0.2s ease;
+}
+@keyframes msgIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.msg.me{align-self:flex-end;align-items:flex-end;}
+.msg.other{align-self:flex-start;align-items:flex-start;}
+
+.msg.me + .msg.me,
+.msg.other + .msg.other{margin-top:2px;}
+.msg.me + .msg.other,
+.msg.other + .msg.me{margin-top:8px;}
+
+.bubble{
+  padding:9px 13px;border-radius:16px;
+  font-size:14.5px;line-height:1.5;
+  word-break:break-word;position:relative;
+}
+.msg.me .bubble{
+  background:var(--me);color:var(--me-text);
+  border-bottom-right-radius:4px;
+}
+.msg.other .bubble{
+  background:var(--other);color:var(--other-text);
+  border-bottom-left-radius:4px;
+}
+.msg-meta{
+  display:flex;align-items:center;gap:4px;
+  font-size:11px;color:var(--muted);
+  margin-top:3px;padding:0 4px;
+}
+.msg.me .msg-meta{flex-direction:row-reverse;}
+.tick{font-size:13px;color:var(--accent);}
+
+/* Typing indicator */
+#typing-indicator{
+  display:none;padding:6px 18px;
+  font-size:12px;color:var(--muted);
+  font-style:italic;z-index:1;position:relative;
+}
+.typing-dots span{
+  display:inline-block;width:6px;height:6px;
+  background:var(--muted);border-radius:50%;
+  margin:0 2px;animation:bounce 1.2s infinite;
+}
+.typing-dots span:nth-child(2){animation-delay:0.2s;}
+.typing-dots span:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-5px);}}
+
+/* Input area */
+#input-area{
+  display:flex;align-items:flex-end;gap:10px;
+  padding:12px 16px;
+  background:var(--surface);
+  border-top:1px solid var(--border);
+  z-index:1;position:relative;
+}
+#msg-input-wrap{
+  flex:1;background:var(--surface2);
+  border:1px solid var(--border);border-radius:24px;
+  display:flex;align-items:flex-end;gap:8px;
+  padding:8px 14px;transition:border-color 0.2s;
+}
+#msg-input-wrap:focus-within{border-color:rgba(37,211,102,0.4);}
+#msg-input{
+  flex:1;background:transparent;border:none;
+  color:#e8eaf0;font-size:15px;font-family:var(--font);
+  outline:none;resize:none;max-height:120px;
+  line-height:1.5;
+}
+#msg-input::placeholder{color:var(--muted);}
+.ia-btn{
+  width:44px;height:44px;border-radius:50%;
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;transition:all 0.15s;flex-shrink:0;
+}
+#emoji-btn{background:transparent;color:var(--muted);}
+#emoji-btn:hover{color:#fff;}
+#send-btn{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;
+}
+#send-btn:hover{transform:scale(1.08);box-shadow:0 4px 16px rgba(37,211,102,0.4);}
+#send-btn:active{transform:scale(0.96);}
+
+/* ── WELCOME SCREEN ── */
+#welcome{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  z-index:1;position:relative;gap:16px;
+  text-align:center;padding:40px;
+}
+#welcome .wicon{font-size:72px;margin-bottom:8px;}
+#welcome h2{font-size:24px;font-weight:700;letter-spacing:-0.5px;}
+#welcome p{color:var(--muted);font-size:15px;max-width:320px;line-height:1.6;}
+
+/* ── SETUP MODAL ── */
+#setup-modal{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;backdrop-filter:blur(8px);
+}
+#setup-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:32px;width:min(380px,90vw);
+  animation:slideUp 0.3s ease;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+#setup-box h2{font-size:22px;font-weight:700;margin-bottom:6px;}
+#setup-box p{color:var(--muted);font-size:14px;margin-bottom:24px;}
+.setup-avatar-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;}
+.av-opt{
+  width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;cursor:pointer;border:2px solid transparent;
+  transition:all 0.15s;
+}
+.av-opt.sel{border-color:var(--accent);transform:scale(1.1);}
+.setup-input{
+  width:100%;padding:12px 16px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;color:#e8eaf0;
+  font-size:15px;font-family:var(--font);
+  outline:none;margin-bottom:12px;
+  transition:border-color 0.2s;
+}
+.setup-input:focus{border-color:rgba(37,211,102,0.5);}
+#setup-btn{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border:none;border-radius:12px;color:#fff;
+  font-size:16px;font-weight:700;font-family:var(--font);
+  cursor:pointer;transition:all 0.2s;letter-spacing:0.3px;
+}
+#setup-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,211,102,0.35);}
+
+/* ── NEW CHAT MODAL ── */
+#newchat-modal{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  display:none;align-items:center;justify-content:center;
+  z-index:100;backdrop-filter:blur(8px);
+}
+#newchat-modal.open{display:flex;}
+#newchat-box{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:20px;padding:28px;width:min(360px,90vw);
+  animation:slideUp 0.2s ease;
+}
+#newchat-box h3{font-size:18px;font-weight:700;margin-bottom:16px;}
+#room-input{
+  width:100%;padding:12px 16px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:12px;color:#e8eaf0;
+  font-size:15px;font-family:var(--font);
+  outline:none;margin-bottom:12px;
+}
+#room-input:focus{border-color:rgba(37,211,102,0.5);}
+.modal-btns{display:flex;gap:10px;}
+.modal-btn{
+  flex:1;padding:12px;border-radius:10px;
+  border:none;font-size:14px;font-weight:600;
+  font-family:var(--font);cursor:pointer;transition:all 0.15s;
+}
+.modal-btn.primary{background:var(--accent);color:#fff;}
+.modal-btn.primary:hover{background:var(--accent2);}
+.modal-btn.cancel{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.modal-btn.cancel:hover{color:#fff;}
+
+/* Emoji picker */
+#emoji-picker{
+  display:none;position:absolute;bottom:80px;left:16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;padding:12px;
+  display:none;flex-wrap:wrap;gap:6px;
+  width:280px;max-height:200px;overflow-y:auto;
+  z-index:10;box-shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+#emoji-picker.open{display:flex;}
+#emoji-picker span{font-size:22px;cursor:pointer;padding:4px;border-radius:8px;transition:background 0.1s;}
+#emoji-picker span:hover{background:rgba(255,255,255,0.1);}
+
+/* No chat selected */
+#no-chat{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;padding:40px;z-index:1;
+  position:relative;
+}
+#no-chat .nc-icon{font-size:60px;margin-bottom:16px;opacity:0.4;}
+#no-chat p{color:var(--muted);font-size:15px;}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px;}
+
+/* Toast */
+#toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-60px);
+  background:var(--surface);border:1px solid var(--border);
+  color:#e8eaf0;padding:10px 20px;border-radius:30px;
+  font-size:13px;font-weight:600;
+  z-index:200;transition:transform 0.3s ease;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+#toast.show{transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup-modal">
+  <div id="setup-box">
+    <h2>👋 ZapChat mein Swagat!</h2>
+    <p>Apna naam aur avatar choose karo</p>
+    <div class="setup-avatar-row" id="avatar-row"></div>
+    <input class="setup-input" id="name-input" placeholder="Apna naam likho..." maxlength="24">
+    <button id="setup-btn">🚀 Shuru Karo</button>
+  </div>
+</div>
+
+<!-- NEW CHAT MODAL -->
+<div id="newchat-modal">
+  <div id="newchat-box">
+    <h3>💬 Naya Chat Room</h3>
+    <input id="room-input" placeholder="Room ka naam likho (e.g. 'Friends')">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeNewChat()">Cancel</button>
+      <button class="modal-btn primary" onclick="joinRoom()">Join / Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMOJI PICKER -->
+<div id="emoji-picker"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sb-header">
+    <div id="my-avatar">?</div>
+    <span id="sb-title">ZapChat</span>
+    <button class="icon-btn" onclick="openNewChat()" title="New Chat">✏️</button>
+    <button class="icon-btn" onclick="logout()" title="Logout">🚪</button>
+  </div>
+  <div id="search-wrap">
+    <input id="search-input" placeholder="🔍  Chat dhundo..." oninput="filterChats(this.value)">
+  </div>
+  <div id="chat-list">
+    <div style="padding:40px 20px;text-align:center;color:var(--muted);font-size:14px;">
+      ✏️ Upar button se naya room banao ya join karo
+    </div>
+  </div>
+</div>
+
+<!-- CHAT AREA -->
+<div id="chatarea">
+  <!-- No chat selected -->
+  <div id="no-chat">
+    <div class="nc-icon">💬</div>
+    <p>Koi room select karo<br>ya naya banao</p>
+  </div>
+  <!-- Chat header (hidden initially) -->
+  <div id="chat-header" style="display:none;">
+    <button id="back-btn" onclick="backToSidebar()">←</button>
+    <div id="ch-avatar"></div>
+    <div id="ch-info">
+      <div id="ch-name">Room Name</div>
+      <div id="ch-status">● Online</div>
+    </div>
+    <button class="icon-btn ch-action">🔍</button>
+    <button class="icon-btn ch-action">⋮</button>
+  </div>
+  <!-- Messages -->
+  <div id="messages" style="display:none;"></div>
+  <div id="typing-indicator" style="display:none;">
+    <span id="typing-name"></span> likh raha hai
+    <span class="typing-dots"><span></span><span></span><span></span></span>
+  </div>
+  <!-- Input -->
+  <div id="input-area" style="display:none;">
+    <div id="msg-input-wrap">
+      <button id="emoji-btn" class="icon-btn" onclick="toggleEmoji()">😊</button>
+      <textarea id="msg-input" placeholder="Message likho..." rows="1"></textarea>
+    </div>
+    <button id="send-btn" class="ia-btn" onclick="sendMsg()">➤</button>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<script>
+// ── Firebase Config ──
+var firebaseConfig = {
+  apiKey: "AIzaSyDemoKeyForZapChat",
+  authDomain: "zapchat-demo.firebaseapp.com",
+  databaseURL: "https://blazefire-d44a2-default-rtdb.firebaseio.com",
+  projectId: "zapchat-demo",
+  storageBucket: "zapchat-demo.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "1:000000000000:web:zapchatdemoapp"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
+
+// ── State ──
+var myId = null;
+var myName = '';
+var myAvatar = '😊';
+var currentRoom = null;
+var rooms = {};       // local room cache
+var msgListener = null;
+var typingTimer = null;
+var isTyping = false;
+
+var AVATARS = ['😊','😎','🦊','🐼','🐸','🦁','🐯','🐨','🦄','🐱','🐶','🐻','🐺','🦋','🐙'];
+var COLORS  = ['#1a3a5c','#2a1a5c','#1a5c3a','#5c1a2a','#2a3a1a','#5c3a1a','#1a4a4a','#4a1a4a'];
+
+// ── Build Emoji Picker ──
+var EMOJIS = ['😀','😂','😍','🥰','😎','🤔','😮','😢','😡','🥳','🎉','❤️','🔥','👍','👎','🙏','✨','💯','🤝','😴','🤣','😅','🙄','😏','🤩','💀','👻','🫶','💪','🫡','🎮','📱','💻','🎵','🍕','🍔','☕','🎁','🏆','⚡'];
+var ep = document.getElementById('emoji-picker');
+EMOJIS.forEach(function(e){
+  var s = document.createElement('span');
+  s.textContent = e;
+  s.onclick = function(){ insertEmoji(e); };
+  ep.appendChild(s);
+});
+
+// ── Avatar row ──
+var ar = document.getElementById('avatar-row');
+AVATARS.forEach(function(av, i){
+  var d = document.createElement('div');
+  d.className = 'av-opt' + (i===0?' sel':'');
+  d.textContent = av;
+  d.style.background = COLORS[i % COLORS.length];
+  d.onclick = function(){
+    document.querySelectorAll('.av-opt').forEach(function(x){x.classList.remove('sel');});
+    d.classList.add('sel');
+    myAvatar = av;
+  };
+  ar.appendChild(d);
+});
+myAvatar = AVATARS[0];
+
+// ── Setup ──
+var saved = localStorage.getItem('zapchat_user');
+if(saved){
+  var u = JSON.parse(saved);
+  myId = u.id; myName = u.name; myAvatar = u.avatar;
+  document.getElementById('setup-modal').style.display = 'none';
+  document.getElementById('my-avatar').textContent = myAvatar;
+  loadRooms();
+}
+
+document.getElementById('setup-btn').onclick = function(){
+  var n = document.getElementById('name-input').value.trim();
+  if(!n){ showToast('❌ Naam to likho!'); return; }
+  myId = 'u_' + Math.random().toString(36).slice(2,10);
+  myName = n; 
+  var sel = document.querySelector('.av-opt.sel');
+  myAvatar = sel ? sel.textContent : '😊';
+  localStorage.setItem('zapchat_user', JSON.stringify({id:myId,name:myName,avatar:myAvatar}));
+  document.getElementById('setup-modal').style.display = 'none';
+  document.getElementById('my-avatar').textContent = myAvatar;
+  loadRooms();
+};
+
+document.getElementById('name-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') document.getElementById('setup-btn').click();
+});
+
+// ── Load rooms user has joined ──
+function loadRooms(){
+  var myRoomsRef = db.ref('user_rooms/' + myId);
+  myRoomsRef.on('value', function(snap){
+    rooms = snap.val() || {};
+    renderRoomList();
+  });
+}
+
+function renderRoomList(filter){
+  var cl = document.getElementById('chat-list');
+  var keys = Object.keys(rooms);
+  if(keys.length === 0){
+    cl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--muted);font-size:14px;">✏️ Upar button se naya room banao ya join karo</div>';
+    return;
+  }
+  cl.innerHTML = '';
+  keys.filter(function(k){
+    if(!filter) return true;
+    return k.toLowerCase().includes(filter.toLowerCase());
+  }).forEach(function(roomId){
+    var r = rooms[roomId];
+    var item = document.createElement('div');
+    item.className = 'chat-item' + (currentRoom===roomId?' active':'');
+    item.onclick = function(){ openRoom(roomId, r); };
+    var color = COLORS[Math.abs(hashStr(roomId)) % COLORS.length];
+    item.innerHTML =
+      '<div class="ci-avatar" style="background:'+color+';color:#fff;">'+getEmoji(roomId)+
+      '<div class="online-dot"></div></div>'+
+      '<div class="ci-info">'+
+        '<div class="ci-name">'+(r.name||roomId)+'</div>'+
+        '<div class="ci-last">'+(r.lastMsg||'Chat shuru karo...')+'</div>'+
+      '</div>'+
+      '<div class="ci-right">'+
+        '<div class="ci-time">'+(r.lastTime||'')+'</div>'+
+        (r.unread?'<div class="ci-badge">'+r.unread+'</div>':'')+
+      '</div>';
+    cl.appendChild(item);
+  });
+}
+
+function hashStr(s){ var h=0; for(var i=0;i<s.length;i++) h=Math.imul(31,h)+s.charCodeAt(i)|0; return h; }
+function getEmoji(roomId){ var emojis=['🏠','🎮','📱','💬','🌟','🔥','🎵','⚡','🎯','🌈']; return emojis[Math.abs(hashStr(roomId))%emojis.length]; }
+function timeStr(ts){ var d=new Date(ts); return d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes(); }
+function dateStr(ts){ var d=new Date(ts),n=new Date(); if(d.toDateString()===n.toDateString()) return 'Aaj'; var diff=Math.floor((n-d)/86400000); if(diff===1) return 'Kal'; return d.getDate()+'/'+(d.getMonth()+1); }
+
+// ── New Chat Modal ──
+function openNewChat(){
+  document.getElementById('newchat-modal').classList.add('open');
+  setTimeout(function(){ document.getElementById('room-input').focus(); },100);
+}
+function closeNewChat(){
+  document.getElementById('newchat-modal').classList.remove('open');
+  document.getElementById('room-input').value = '';
+}
+document.getElementById('room-input').addEventListener('keydown',function(e){ if(e.key==='Enter') joinRoom(); });
+
+function joinRoom(){
+  var rname = document.getElementById('room-input').value.trim();
+  if(!rname){ showToast('❌ Room ka naam to likho!'); return; }
+  var roomId = 'room_' + rname.toLowerCase().replace(/\s+/g,'_');
+  // Add to user's rooms
+  db.ref('user_rooms/'+myId+'/'+roomId).set({name:rname, lastMsg:'', lastTime:'', joined:Date.now()});
+  // Register room globally
+  db.ref('rooms/'+roomId).transaction(function(curr){ return curr || {name:rname,created:Date.now()}; });
+  closeNewChat();
+  showToast('✅ "'+rname+'" room mein aa gaye!');
+  setTimeout(function(){ openRoom(roomId,{name:rname}); },300);
+}
+
+// ── Open Room ──
+function openRoom(roomId, roomData){
+  currentRoom = roomId;
+
+  // UI updates
+  document.getElementById('no-chat').style.display = 'none';
+  document.getElementById('chat-header').style.display = 'flex';
+  document.getElementById('messages').style.display = 'flex';
+  document.getElementById('input-area').style.display = 'flex';
+  document.getElementById('typing-indicator').style.display = 'block';
+
+  var color = COLORS[Math.abs(hashStr(roomId)) % COLORS.length];
+  document.getElementById('ch-avatar').textContent = getEmoji(roomId);
+  document.getElementById('ch-avatar').style.background = color;
+  document.getElementById('ch-avatar').style.color = '#fff';
+  document.getElementById('ch-name').textContent = roomData.name || roomId;
+  document.getElementById('ch-status').textContent = '● Live • Sab dekh sakte hain';
+
+  // Mobile: show chatarea
+  document.getElementById('sidebar').classList.remove('show');
+  document.getElementById('chatarea').classList.add('show');
+  document.getElementById('chatarea').style.display = 'flex';
+
+  // Active state in list
+  document.querySelectorAll('.chat-item').forEach(function(el){ el.classList.remove('active'); });
+  document.querySelectorAll('.chat-item').forEach(function(el){
+    if(el.querySelector('.ci-name') && el.querySelector('.ci-name').textContent === (roomData.name||roomId))
+      el.classList.add('active');
+  });
+
+  // Clear unread
+  if(rooms[roomId]) rooms[roomId].unread = 0;
+
+  // Load messages
+  if(msgListener) msgListener();
+  loadMessages(roomId);
+  listenTyping(roomId);
+
+  document.getElementById('msg-input').focus();
+}
+
+// ── Load Messages ──
+function loadMessages(roomId){
+  var msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+
+  var ref = db.ref('messages/'+roomId).orderByChild('t').limitToLast(60);
+  msgListener = function(){ ref.off(); };
+
+  var lastDate = '';
+  ref.on('child_added', function(snap){
+    var m = snap.val();
+    if(!m) return;
+    var dateKey = dateStr(m.t);
+    if(dateKey !== lastDate){
+      lastDate = dateKey;
+      var sep = document.createElement('div');
+      sep.className = 'date-sep';
+      sep.innerHTML = '<span>'+dateKey+'</span>';
+      msgs.appendChild(sep);
+    }
+    appendMessage(m);
+    // Update room last msg
+    if(currentRoom === roomId){
+      db.ref('user_rooms/'+myId+'/'+roomId).update({
+        lastMsg: (m.sender===myId?'Sen: ':m.name+': ')+m.text.slice(0,30),
+        lastTime: timeStr(m.t)
+      });
+    }
+  });
+  ref.on('child_changed', function(){});
+}
+
+function appendMessage(m){
+  var msgs = document.getElementById('messages');
+  var isMe = m.sender === myId;
+  var div = document.createElement('div');
+  div.className = 'msg ' + (isMe?'me':'other');
+  div.innerHTML =
+    (!isMe ? '<div style="font-size:11px;color:var(--muted);margin-bottom:2px;padding-left:2px;">'+m.avatar+' '+m.name+'</div>' : '') +
+    '<div class="bubble">'+escapeHtml(m.text)+'</div>'+
+    '<div class="msg-meta">'+
+      '<span>'+timeStr(m.t)+'</span>'+
+      (isMe ? '<span class="tick">✓✓</span>' : '')+
+    '</div>';
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function escapeHtml(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── Send Message ──
+function sendMsg(){
+  if(!currentRoom){ showToast('❌ Pehle koi room select karo!'); return; }
+  var inp = document.getElementById('msg-input');
+  var text = inp.value.trim();
+  if(!text) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+
+  db.ref('messages/'+currentRoom).push({
+    sender: myId, name: myName, avatar: myAvatar,
+    text: text, t: Date.now()
+  });
+  stopTyping();
+}
+
+// ── Typing indicator ──
+function listenTyping(roomId){
+  db.ref('typing/'+roomId).on('value', function(snap){
+    var data = snap.val() || {};
+    var typers = Object.entries(data)
+      .filter(function(e){ return e[0]!==myId && Date.now()-e[1].t<4000; })
+      .map(function(e){ return e[1].name; });
+    var ti = document.getElementById('typing-indicator');
+    if(typers.length > 0){
+      document.getElementById('typing-name').textContent = typers.join(', ');
+      ti.style.display = 'block';
+    } else {
+      ti.style.display = 'none';
+    }
+  });
+}
+
+function startTyping(){
+  if(!currentRoom || isTyping) return;
+  isTyping = true;
+  db.ref('typing/'+currentRoom+'/'+myId).set({name:myName, t:Date.now()});
+}
+function stopTyping(){
+  if(!isTyping) return;
+  isTyping = false;
+  if(currentRoom) db.ref('typing/'+currentRoom+'/'+myId).remove();
+}
+
+// ── Input handlers ──
+var inp = document.getElementById('msg-input');
+inp.addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+  startTyping();
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(stopTyping, 3000);
+});
+inp.addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMsg(); }
+});
+
+// ── Emoji ──
+function toggleEmoji(){
+  var ep = document.getElementById('emoji-picker');
+  ep.classList.toggle('open');
+}
+function insertEmoji(e){
+  var inp = document.getElementById('msg-input');
+  inp.value += e;
+  inp.focus();
+  document.getElementById('emoji-picker').classList.remove('open');
+}
+document.addEventListener('click', function(e){
+  if(!e.target.closest('#emoji-picker') && !e.target.closest('#emoji-btn'))
+    document.getElementById('emoji-picker').classList.remove('open');
+});
+
+// ── Search ──
+function filterChats(q){ renderRoomList(q); }
+
+// ── Mobile back ──
+function backToSidebar(){
+  document.getElementById('sidebar').classList.add('show');
+  document.getElementById('chatarea').classList.remove('show');
+}
+
+// ── Logout ──
+function logout(){
+  stopTyping();
+  localStorage.removeItem('zapchat_user');
+  location.reload();
+}
+
+// ── Toast ──
+function showToast(msg){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2500);
+}
+
+// ── Mobile: initially show sidebar ──
+if(window.innerWidth <= 700){
+  document.getElementById('sidebar').classList.add('show');
+  document.getElementById('chatarea').classList.remove('show');
+} else {
+  document.getElementById('chatarea').style.display = 'flex';
+}
+
+// ── Cleanup typing on leave ──
+window.addEventListener('beforeunload', stopTyping);
+</script>
+</body>
+</html>
